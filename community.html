@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARC Raiders // Community Builds</title>
+    <meta name="description" content="Browse, like, and load community-shared ARC Raiders loadouts. Find the best builds for looting, combat, PvP and solo runs.">
+    <meta name="keywords" content="ARC Raiders builds, ARC Raiders community, ARC Raiders loadouts, ARC Raiders meta builds, best ARC Raiders build">
+    <meta name="author" content="Bedda145">
+
+    <meta property="og:title" content="ARC Raiders Community Builds">
+    <meta property="og:description" content="Browse and share ARC Raiders loadouts. Find the best community builds for every playstyle.">
+    <meta property="og:image" content="https://arc-loadout-builder.pages.dev/assets/arc_logo.png">
+    <meta property="og:url" content="https://arc-loadout-builder.pages.dev/community.html">
+    <meta property="og:type" content="website">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ARC Raiders Community Builds">
+    <meta name="twitter:description" content="Browse and share ARC Raiders loadouts. Find the best community builds.">
+    <meta name="twitter:image" content="https://arc-loadout-builder.pages.dev/assets/arc_logo.png">
+    <link rel="icon" type="image/png" href="assets/arc_logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B0C10;
+            color: #C5C6C7;
+        }
+        .font-hud {
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        /* Hero gradient */
+        .hero-glow {
+            background: radial-gradient(ellipse at 50% 0%, rgba(102,252,241,0.08) 0%, transparent 60%);
+        }
+
+        /* Build card hover effects */
+        .build-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: visible;
+        }
+        .build-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(102,252,241,0.5), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+            border-radius: 2px;
+        }
+        .build-card:hover::before {
+            opacity: 1;
+        }
+        .build-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 30px rgba(102,252,241,0.06);
+            border-color: rgba(102,252,241,0.25) !important;
+        }
+
+        /* Augment icon glow */
+        .augment-badge {
+            position: relative;
+        }
+        .augment-badge::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(102,252,241,0.15), transparent);
+            z-index: -1;
+        }
+
+        /* Stat bar animations */
+        .stat-bar {
+            height: 3px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+        .stat-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Like button pulse */
+        .like-btn.liked {
+            animation: likePulse 0.4s ease-out;
+        }
+        @keyframes likePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Search bar glow on focus */
+        .search-glow:focus-within {
+            box-shadow: 0 0 20px rgba(102,252,241,0.08);
+            border-color: rgba(102,252,241,0.3) !important;
+        }
+
+        /* Filter pills */
+        .filter-pill {
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.03);
+            color: rgba(255,255,255,0.45);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filter-pill:hover {
+            border-color: rgba(102,252,241,0.3);
+            color: rgba(255,255,255,0.7);
+            background: rgba(102,252,241,0.05);
+        }
+        .filter-pill.active {
+            border-color: rgba(102,252,241,0.5);
+            color: rgba(102,252,241,0.95);
+            background: rgba(102,252,241,0.08);
+        }
+
+        /* Empty state */
+        .empty-state {
+            background: radial-gradient(ellipse at center, rgba(102,252,241,0.03) 0%, transparent 70%);
+        }
+
+        /* Skeleton loading */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* View counter icon */
+        .views-icon { opacity: 0.4; }
+
+        /* ===== LOADOUT PREVIEW ITEMS ===== */
+        .preview-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+            transition: all 0.2s;
+            position: relative;
+            cursor: default;
+            flex-shrink: 0;
+        }
+        .preview-item:hover { transform: scale(1.1); z-index: 50; }
+        .preview-item img {
+            width: 36px; height: 36px;
+            object-fit: contain;
+            filter: none !important;
+            mix-blend-mode: normal !important;
+            opacity: 0.9;
+            position: relative; z-index: 1;
+        }
+        .preview-item:hover img { opacity: 1; }
+
+        /* Rarity colors */
+        .preview-item.r-common {
+            border-color: rgba(255,255,255,0.15);
+            background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+        }
+        .preview-item.r-uncommon {
+            border-color: rgba(120,255,130,0.45);
+            background: linear-gradient(145deg, rgba(120,255,130,0.12), rgba(120,255,130,0.02));
+        }
+        .preview-item.r-rare {
+            border-color: rgba(93,152,255,0.45);
+            background: linear-gradient(145deg, rgba(93,152,255,0.12), rgba(93,152,255,0.02));
+        }
+        .preview-item.r-epic {
+            border-color: rgba(184,108,255,0.5);
+            background: linear-gradient(145deg, rgba(184,108,255,0.12), rgba(184,108,255,0.02));
+        }
+        .preview-item.r-legendary {
+            border-color: rgba(255,215,0,0.5);
+            background: linear-gradient(145deg, rgba(255,215,0,0.12), rgba(255,215,0,0.02));
+        }
+
+        .preview-item.r-common:hover { box-shadow: 0 0 14px rgba(255,255,255,0.08); background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.02)); }
+        .preview-item.r-uncommon:hover { box-shadow: 0 0 14px rgba(120,255,130,0.2); background: linear-gradient(145deg, rgba(120,255,130,0.2), rgba(120,255,130,0.04)); }
+        .preview-item.r-rare:hover { box-shadow: 0 0 14px rgba(93,152,255,0.2); background: linear-gradient(145deg, rgba(93,152,255,0.2), rgba(93,152,255,0.04)); }
+        .preview-item.r-epic:hover { box-shadow: 0 0 14px rgba(184,108,255,0.2); background: linear-gradient(145deg, rgba(184,108,255,0.2), rgba(184,108,255,0.04)); }
+        .preview-item.r-legendary:hover { box-shadow: 0 0 14px rgba(255,215,0,0.2); background: linear-gradient(145deg, rgba(255,215,0,0.2), rgba(255,215,0,0.04)); }
+
+        /* Suit preview (slightly smaller) */
+        .preview-item.suit-box {
+            width: 44px; height: 44px;
+            border-radius: 11px;
+        }
+        .preview-item.suit-box img { width: 32px; height: 32px; }
+
+        /* ===== RICH TOOLTIP ===== */
+        .rich-tt {
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            background: linear-gradient(180deg, rgba(32,36,43,.97), rgba(18,20,24,.97));
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.04);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 200;
+            overflow: hidden;
+        }
+        .preview-item:hover .rich-tt {
+            opacity: 1;
+        }
+        .preview-item .rich-tt {
+            left: 0;
+            transform: translateX(0);
+        }
+
+
+
+        .preview-item:hover .rich-tt { opacity: 1; }
+
+        .rich-tt-inner { padding: 12px 14px; }
+        .rich-tt-chips { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+        .rich-tt-chip {
+            font-size: 9px; font-weight: 900;
+            padding: 3px 8px; border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.3);
+            text-transform: uppercase; letter-spacing: 0.3px; line-height: 1;
+        }
+        .rich-tt-chip.cat { border-color: rgba(102,252,241,0.25); color: rgba(102,252,241,0.95); }
+        .rich-tt-chip.rc-common { color: rgba(255,255,255,0.55); }
+        .rich-tt-chip.rc-uncommon { color: rgba(120,255,130,0.85); border-color: rgba(120,255,130,0.15); }
+        .rich-tt-chip.rc-rare { color: rgba(93,152,255,0.85); border-color: rgba(93,152,255,0.15); }
+        .rich-tt-chip.rc-epic { color: rgba(184,108,255,0.85); border-color: rgba(184,108,255,0.15); }
+        .rich-tt-chip.rc-legendary { color: rgba(255,215,0,0.85); border-color: rgba(255,215,0,0.15); }
+
+        .rich-tt-name {
+            font-size: 15px; font-weight: 900;
+            color: rgba(255,255,255,0.93);
+            letter-spacing: 0.5px; text-transform: uppercase;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .rich-tt-type { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 3px; }
+        .rich-tt-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 10px 0; }
+        .rich-tt-row { display: flex; justify-content: space-between; font-size: 11px; padding: 3px 0; }
+        .rich-tt-k { color: rgba(255,255,255,0.4); font-weight: 700; }
+        .rich-tt-v { color: rgba(255,255,255,0.88); font-weight: 800; }
+
+        /* ===== RESULT COUNT ===== */
+        .result-count {
+            font-size: 11px;
+            color: rgba(255,255,255,0.3);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .result-count span { color: rgba(102,252,241,0.7); }
+
+        /* ===== SCROLL TO TOP ===== */
+        .scroll-top {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 44px; height: 44px;
+            border-radius: 14px;
+            background: rgba(10,12,16,0.9);
+            border: 1px solid rgba(102,252,241,0.2);
+            color: rgba(102,252,241,0.8);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        .scroll-top.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .scroll-top:hover {
+            background: rgba(102,252,241,0.1);
+            border-color: rgba(102,252,241,0.4);
+            box-shadow: 0 0 20px rgba(102,252,241,0.15);
+        }
+
+        /* ===== SHARE BUILD BUTTON ===== */
+        .share-btn {
+            width: 32px; height: 32px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.2);
+            color: rgba(255,255,255,0.4);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .share-btn:hover {
+            border-color: rgba(102,252,241,0.3);
+            color: rgba(102,252,241,0.8);
+            background: rgba(102,252,241,0.05);
+        }
+        .share-btn.copied {
+            border-color: rgba(102,252,241,0.5);
+            color: rgba(102,252,241,1);
+            background: rgba(102,252,241,0.1);
+        }
+
+        /* ===== TOAST ===== */
+        .comm-toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: rgba(10,12,16,0.95);
+            border: 1px solid rgba(102,252,241,0.3);
+            border-radius: 14px;
+            padding: 10px 20px;
+            color: rgba(102,252,241,0.95);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            z-index: 300;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+        }
+        .comm-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F22F32GJ28"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-F22F32GJ28');
+    </script>
+</head>
+
+<body class="min-h-screen flex flex-col">
+
+    <!-- NAV -->
+    <nav class="border-b border-white/5 bg-black/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="community.html" class="flex items-center gap-3 group">
+                <img src="assets/arc_logo.png" alt="ARC Community"
+                    class="h-28 w-auto object-contain drop-shadow-lg"
+                    style="filter: none; mix-blend-mode: normal;"
+                    draggable="false"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div class="text-2xl font-hud font-bold text-white tracking-widest" style="display:none;">
+                    ARC <span class="text-[#66FCF1]">COMMUNITY</span>
+                </div>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="about.html"
+                    class="text-xs font-hud font-bold text-gray-400 hover:text-[#66FCF1] uppercase tracking-widest transition-colors hidden md:block">
+                    About
+                </a>
+                <a href="index.html"
+                    class="text-xs font-bold text-[#66FCF1] border border-[#66FCF1]/30 px-4 py-1.5 rounded-xl hover:bg-[#66FCF1]/10 transition-all uppercase tracking-widest flex items-center gap-2">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/>
+                    </svg>
+                    Builder
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <div class="hero-glow border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 py-12 text-center">
+            <h1 class="text-4xl md:text-5xl font-hud font-bold text-white tracking-wider mb-3">
+                COMMUNITY <span class="text-[#66FCF1]">LOADOUTS</span>
+            </h1>
+            <p class="text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
+                Browse, load, and like builds shared by the ARC Raiders community.
+                <br>Find your next winning loadout.
+            </p>
+            <div class="flex justify-center gap-6 mt-6">
+                <div class="text-center">
+                    <div id="stat-total-builds" class="text-2xl font-hud font-bold text-[#66FCF1]">—</div>
+                    <div class="text-[10px] text-gray-500 uppercase tracking-widest">Builds</div>
+                </div>
+                <div class="w-px h-10 bg-white/10"></div>
+                <div class="text-center">
+                    <div id="stat-total-likes" class="text-2xl font-hud font-bold text-[#FFD700]">—</div>
+                    <div class="text-[10px] text-gray-500 uppercase tracking-widest">Likes</div>
+                </div>
+                <div class="w-px h-10 bg-white/10"></div>
+                <div class="text-center">
+                    <div id="stat-total-views" class="text-2xl font-hud font-bold text-white">—</div>
+                    <div class="text-[10px] text-gray-500 uppercase tracking-widest">Views</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto w-full p-6 flex-grow">
+
+        <!-- SEARCH + FILTERS BAR -->
+        <div class="bg-[#1F2833]/30 border border-white/5 rounded-2xl p-4 mb-6">
+            <div class="flex flex-col md:flex-row gap-4 items-center">
+                <div class="flex-1 w-full relative search-glow border border-white/10 rounded-xl transition-all">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input type="text" id="search" placeholder="Search builds by name, creator, augment, or tag..."
+                        class="w-full bg-transparent pl-10 pr-4 py-2.5 text-sm text-white outline-none placeholder-gray-600">
+                </div>
+                <select id="sort" onchange="loadBuilds()"
+                    class="bg-[#0B0C10] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-400 focus:border-[#66FCF1] outline-none cursor-pointer">
+                    <option value="newest">🕐 Newest</option>
+                    <option value="likes">⭐ Most Liked</option>
+                    <option value="weight">🪶 Lightest</option>
+                    <option value="value">💰 Cheapest</option>
+                </select>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-4" id="filter-pills">
+                <button class="filter-pill active" onclick="filterBuilds('all', this)">All</button>
+                <button class="filter-pill" onclick="filterBuilds('Looting', this)">Looting</button>
+                <button class="filter-pill" onclick="filterBuilds('Combat', this)">Combat</button>
+                <button class="filter-pill" onclick="filterBuilds('budget', this)">Budget</button>
+                <button class="filter-pill" onclick="filterBuilds('pvp', this)">PvP</button>
+                <button class="filter-pill" onclick="filterBuilds('solo', this)">Solo</button>
+                <button class="filter-pill" onclick="filterBuilds('squad', this)">Squad</button>
+            </div>
+        </div>
+
+        <!-- RESULT COUNT -->
+        <div class="flex justify-between items-center mb-4 px-1">
+            <div id="result-count" class="result-count"></div>
+            <div id="active-filter-label" class="result-count"></div>
+        </div>
+
+        <!-- BUILD GRID -->
+        <div id="build-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-[#1F2833]/30 border border-white/5 rounded-2xl p-5">
+                <div class="skeleton h-6 w-3/4 mb-3"></div>
+                <div class="skeleton h-4 w-1/2 mb-4"></div>
+                <div class="flex gap-2 mb-4"><div class="skeleton h-6 w-20"></div><div class="skeleton h-6 w-16"></div></div>
+                <div class="skeleton h-14 w-full mb-3"></div>
+                <div class="grid grid-cols-2 gap-2 mb-4"><div class="skeleton h-16"></div><div class="skeleton h-16"></div></div>
+                <div class="skeleton h-10 w-full mt-4"></div>
+            </div>
+            <div class="bg-[#1F2833]/30 border border-white/5 rounded-2xl p-5 hidden md:block">
+                <div class="skeleton h-6 w-3/4 mb-3"></div>
+                <div class="skeleton h-4 w-1/2 mb-4"></div>
+                <div class="flex gap-2 mb-4"><div class="skeleton h-6 w-20"></div><div class="skeleton h-6 w-16"></div></div>
+                <div class="skeleton h-14 w-full mb-3"></div>
+                <div class="grid grid-cols-2 gap-2 mb-4"><div class="skeleton h-16"></div><div class="skeleton h-16"></div></div>
+                <div class="skeleton h-10 w-full mt-4"></div>
+            </div>
+            <div class="bg-[#1F2833]/30 border border-white/5 rounded-2xl p-5 hidden lg:block">
+                <div class="skeleton h-6 w-3/4 mb-3"></div>
+                <div class="skeleton h-4 w-1/2 mb-4"></div>
+                <div class="flex gap-2 mb-4"><div class="skeleton h-6 w-20"></div><div class="skeleton h-6 w-16"></div></div>
+                <div class="skeleton h-14 w-full mb-3"></div>
+                <div class="grid grid-cols-2 gap-2 mb-4"><div class="skeleton h-16"></div><div class="skeleton h-16"></div></div>
+                <div class="skeleton h-10 w-full mt-4"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- SCROLL TO TOP -->
+    <button id="scroll-top" class="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+        </svg>
+    </button>
+
+    <!-- TOAST -->
+    <div id="comm-toast" class="comm-toast"></div>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-white/5 bg-black/50 py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-[10px] text-gray-600 uppercase tracking-widest">
+                Arc Raiders is a trademark of Embark Studios. This is a fan site.
+            </div>
+            <div class="flex gap-4">
+                <a href="index.html" class="text-[10px] text-gray-600 hover:text-[#66FCF1] uppercase tracking-widest transition-colors">Builder</a>
+                <a href="about.html" class="text-[10px] text-gray-600 hover:text-[#66FCF1] uppercase tracking-widest transition-colors">About</a>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, doc, updateDoc, increment, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCN00INTW4CV1IdPq0IQyplEDXEDT6QaOs",
+            authDomain: "arc-builder-db.firebaseapp.com",
+            projectId: "arc-builder-db",
+            storageBucket: "arc-builder-db.firebasestorage.app",
+            messagingSenderId: "975911967227",
+            appId: "1:975911967227:web:de6c9db438e7150777135e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ===== ITEM + SUIT DATABASES =====
+        const itemsDB = {
+            "wpn_anvil":       { name: "Anvil",        type: "Hand Cannon",              rarity: "uncommon",  weight: 5.0,  value: 5000,  cat: "Weapon", image: "assets/anvil.png" },
+            "wpn_bobcat":      { name: "Bobcat",       type: "SMG",                      rarity: "epic",      weight: 4.0,  value: 9000,  cat: "Weapon", image: "assets/bobcat.png" },
+            "wpn_ferro":       { name: "Ferro Rifle",  type: "Battle Rifle",             rarity: "common",    weight: 8.0,  value: 475,   cat: "Weapon", image: "assets/ferro.png" },
+            "wpn_hullcracker": { name: "Hullcracker",  type: "Launcher",                 rarity: "epic",      weight: 7.0,  value: 10000, cat: "Weapon", image: "assets/hullcracker.png" },
+            "wpn_osprey":      { name: "Osprey",       type: "Sniper",                   rarity: "epic",      weight: 9.0,  value: 4500,  cat: "Weapon", image: "assets/osprey.png" },
+            "wpn_rattler":     { name: "Rattler",      type: "Assault Rifle",            rarity: "uncommon",  weight: 6.0,  value: 1750,  cat: "Weapon", image: "assets/rattler.png" },
+            "wpn_stitcher":    { name: "Stitcher",     type: "SMG",                      rarity: "common",    weight: 5.0,  value: 800,   cat: "Weapon", image: "assets/stitcher.png" },
+            "wpn_renegade":    { name: "Renegade",     type: "Heavy Lever-Action Rifle", rarity: "rare",      weight: 10.0, value: 7000,  cat: "Weapon", image: "assets/renegade.png" },
+            "wpn_kettle":      { name: "Kettle",       type: "Heavy Pipe Weapon",        rarity: "common",    weight: 7.0,  value: 840,   cat: "Weapon", image: "assets/kettle.png" },
+            "wpn_il_toro":     { name: "Il Toro",      type: "Shotgun",                  rarity: "uncommon",  weight: 8.0,  value: 5000,  cat: "Weapon", image: "assets/il_toro.png" },
+            "wpn_venator":     { name: "Venator",      type: "Pistol",                   rarity: "rare",      weight: 5.0,  value: 7000,  cat: "Weapon", image: "assets/venator.png" },
+            "shd_light":       { name: "Light Shield", type: "Light Defense",            rarity: "uncommon",  weight: 5.0,  value: 640,   cat: "Shield", image: "assets/shield_light.png" },
+            "shd_med":         { name: "Medium Shield",type: "Medium Defense",           rarity: "rare",      weight: 7.0,  value: 2000,  cat: "Shield", image: "assets/shield_med.png" },
+            "shd_heavy":       { name: "Heavy Shield", type: "Heavy Defense",            rarity: "epic",      weight: 9.0,  value: 5500,  cat: "Shield", image: "assets/shield_heavy.png" },
+        };
+
+        const suitsDB = {
+            "aug_looting_mk1":           { name: "Looting Mk.1",             rarity: "uncommon", image: "assets/suit_looter.png" },
+            "aug_combat_mk1":            { name: "Combat Mk.1",              rarity: "uncommon", image: "assets/suit_heavy.png" },
+            "aug_looting_mk2":           { name: "Looting Mk.2",             rarity: "rare",     image: "assets/suit_looter.png" },
+            "aug_combat_mk2":            { name: "Combat Mk.2",              rarity: "rare",     image: "assets/suit_heavy.png" },
+            "aug_combat_mk3_aggressive": { name: "Combat Mk.3 (Aggressive)", rarity: "epic",     image: "assets/suit_combat_mk3_aggressive.png" },
+            "aug_combat_mk3_flanking":   { name: "Combat Mk.3 (Flanking)",   rarity: "epic",     image: "assets/suit_combat_mk3_flanking.png" },
+            "aug_looting_mk3_cautious":  { name: "Looting Mk.3 (Cautious)",  rarity: "epic",     image: "assets/suit_looting_mk3_cautious.png" },
+            "aug_looting_mk3_safekeeper":{ name: "Looting Mk.3 (Safekeeper)",rarity: "epic",     image: "assets/suit_looting_mk3_safekeeper.png" },
+            "aug_looting_mk3_survivor":  { name: "Looting Mk.3 (Survivor)",  rarity: "epic",     image: "assets/suit_looting_mk3_survivor.png" },
+        };
+
+        // ===== DECODE + PREVIEW =====
+        function decodeBuild(code) {
+            try { return JSON.parse(decodeURIComponent(escape(atob(code)))); }
+            catch (e) { return null; }
+        }
+
+        function getLoadoutPreview(buildCode) {
+            const data = decodeBuild(buildCode);
+            if (!data) return { weapons: [], shield: null, suit: null };
+
+            const weapons = [];
+            for (const slot of (data.eq || [])) {
+                if (slot && slot.id && itemsDB[slot.id]) weapons.push(itemsDB[slot.id]);
+            }
+
+            const shield = (data.sh && itemsDB[data.sh]) ? itemsDB[data.sh] : null;
+            const suit = (data.suit && suitsDB[data.suit]) ? suitsDB[data.suit] : null;
+
+            return { weapons, shield, suit };
+        }
+
+        // ===== HELPERS =====
+        let allBuilds = [];
+        let currentFilter = 'all';
+        let searchTerm = '';
+
+        function esc(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        function rarityLabel(r) {
+            const v = (r || '').toLowerCase();
+            if (!v) return 'Common';
+            return v[0].toUpperCase() + v.slice(1);
+        }
+
+        function buildItemTooltip(item, category) {
+            const cat = category || item.cat || 'Item';
+            const rar = rarityLabel(item.rarity);
+            return `<div class="rich-tt">
+                <div class="rich-tt-inner">
+                    <div class="rich-tt-chips">
+                        <span class="rich-tt-chip cat">${esc(cat)}</span>
+                        <span class="rich-tt-chip rc-${item.rarity || 'common'}">${esc(rar)}</span>
+                    </div>
+                    <div class="rich-tt-name">${esc(item.name)}</div>
+                    <div class="rich-tt-type">${esc(item.type || '')}</div>
+                    <div class="rich-tt-divider"></div>
+                    <div class="rich-tt-row">
+                        <span class="rich-tt-k">Weight</span>
+                        <span class="rich-tt-v">${item.weight != null ? item.weight.toFixed(2) + ' kg' : '—'}</span>
+                    </div>
+                    <div class="rich-tt-row">
+                        <span class="rich-tt-k">Value</span>
+                        <span class="rich-tt-v">${item.value != null ? '$' + item.value.toLocaleString() : '—'}</span>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function buildSuitTooltip(suit) {
+            const rar = rarityLabel(suit.rarity);
+            return `<div class="rich-tt" style="width:200px;">
+                <div class="rich-tt-inner">
+                    <div class="rich-tt-chips">
+                        <span class="rich-tt-chip cat">Augment</span>
+                        <span class="rich-tt-chip rc-${suit.rarity || 'common'}">${esc(rar)}</span>
+                    </div>
+                    <div class="rich-tt-name">${esc(suit.name)}</div>
+                    <div class="rich-tt-type">Equipped Augment</div>
+                </div>
+            </div>`;
+        }
+
+        function timeAgo(timestamp) {
+            const diff = Math.floor((new Date() - new Date(timestamp)) / 1000);
+            if (diff < 60) return 'just now';
+            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+            return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function weightColor(w) {
+            if (w < 30) return '#66FCF1';
+            if (w < 50) return '#FFD700';
+            return '#ff5b5b';
+        }
+
+        function showCommToast(msg) {
+            const t = document.getElementById('comm-toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(showCommToast._t);
+            showCommToast._t = setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        // ===== SHARE LINK COPY =====
+        window.shareBuildLink = async (buildCode, btn) => {
+            const base = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            const url = base + 'index.html?b=' + buildCode;
+            try {
+                await navigator.clipboard.writeText(url);
+            } catch {
+                const ta = document.createElement('textarea');
+                ta.value = url;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            btn.classList.add('copied');
+            showCommToast('Link copied!');
+            setTimeout(() => btn.classList.remove('copied'), 1500);
+        };
+
+        // ===== LIKING =====
+        window.handleLike = async (id, btn) => {
+            if (localStorage.getItem(`liked_${id}`)) return;
+            const countSpan = btn.querySelector('.like-count');
+            countSpan.innerText = parseInt(countSpan.innerText) + 1;
+            btn.classList.add('liked', 'text-[#FFD700]');
+            localStorage.setItem(`liked_${id}`, 'true');
+            const ref = doc(db, "builds", id);
+            await updateDoc(ref, { likes: increment(1) });
+            updateHeroStats();
+        };
+
+        // ===== VIEWING =====
+        window.handleView = async (id) => {
+            if (sessionStorage.getItem(`viewed_${id}`)) return;
+            sessionStorage.setItem(`viewed_${id}`, 'true');
+            const ref = doc(db, "builds", id);
+            await updateDoc(ref, { views: increment(1) });
+        };
+
+        // ===== FILTERING =====
+        window.filterBuilds = (filter, btn) => {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            renderBuilds();
+        };
+
+        // ===== SEARCH =====
+        document.getElementById('search').addEventListener('input', (e) => {
+            searchTerm = e.target.value.toLowerCase().trim();
+            renderBuilds();
+        });
+
+        // ===== HERO STATS =====
+        function updateHeroStats() {
+            document.getElementById('stat-total-builds').textContent = allBuilds.length;
+            document.getElementById('stat-total-likes').textContent = allBuilds.reduce((s, b) => s + (b.likes || 0), 0);
+            document.getElementById('stat-total-views').textContent = allBuilds.reduce((s, b) => s + (b.views || 0), 0);
+        }
+
+        // ===== SCROLL TO TOP =====
+        const scrollBtn = document.getElementById('scroll-top');
+        window.addEventListener('scroll', () => {
+            scrollBtn.classList.toggle('visible', window.scrollY > 400);
+        });
+
+        // ===== RENDER BUILDS =====
+        function renderBuilds() {
+            const grid = document.getElementById('build-grid');
+            const sort = document.getElementById('sort').value;
+            let builds = [...allBuilds];
+
+            if (currentFilter !== 'all') {
+                builds = builds.filter(b => {
+                    const augMatch = (b.augment || '').toLowerCase().includes(currentFilter.toLowerCase());
+                    const tagMatch = Array.isArray(b.tags) && b.tags.some(t => t.toLowerCase().includes(currentFilter.toLowerCase()));
+                    return augMatch || tagMatch;
+                });
+            }
+
+            if (searchTerm) {
+                builds = builds.filter(b => {
+                    const t = (b.title || '').toLowerCase();
+                    const a = (b.augment || '').toLowerCase();
+                    const c = (b.creator || '').toLowerCase();
+                    const tags = Array.isArray(b.tags) ? b.tags.join(' ').toLowerCase() : '';
+                    return t.includes(searchTerm) || a.includes(searchTerm) || c.includes(searchTerm) || tags.includes(searchTerm);
+                });
+            }
+
+            if (sort === 'newest') builds.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            if (sort === 'likes') builds.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+            if (sort === 'weight') builds.sort((a, b) => a.stats.weight - b.stats.weight);
+            if (sort === 'value') builds.sort((a, b) => a.stats.value - b.stats.value);
+
+            // Result count
+            const rc = document.getElementById('result-count');
+            rc.innerHTML = `Showing <span>${builds.length}</span> of <span>${allBuilds.length}</span> builds`;
+
+            const fl = document.getElementById('active-filter-label');
+            fl.innerHTML = currentFilter !== 'all' ? `Filter: <span>${esc(currentFilter)}</span>` : '';
+
+            if (builds.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full empty-state text-center py-20 rounded-2xl border border-white/5">
+                        <div class="text-4xl mb-4 opacity-30">🔍</div>
+                        <p class="text-gray-500 font-hud text-lg uppercase tracking-widest">No builds found</p>
+                        <p class="text-gray-600 text-xs mt-2">Try a different filter or search term</p>
+                    </div>`;
+                return;
+            }
+
+            grid.innerHTML = builds.map(b => {
+                const isLiked = localStorage.getItem(`liked_${b.id}`);
+                const maxWeight = 80;
+                const weightPct = Math.min((b.stats.weight / maxWeight) * 100, 100);
+                const wColor = weightColor(b.stats.weight);
+                const ago = timeAgo(b.timestamp);
+                const { weapons, shield, suit } = getLoadoutPreview(b.buildCode);
+
+                return `
+                <div class="build-card bg-[#1F2833]/30 border border-white/5 rounded-2xl p-5 flex flex-col">
+
+                    <!-- Header -->
+                    <div class="flex justify-between items-start mb-1">
+                        <div class="flex-1 min-w-0 pr-3">
+                            <h3 class="text-white font-bold font-hud text-xl truncate">${esc(b.title)}</h3>
+                            <p class="text-[10px] text-gray-500 mt-0.5">
+                                by <span class="text-[#66FCF1]">${esc(b.creator || 'Anonymous')}</span>
+                                <span class="text-gray-700 mx-1">·</span>
+                                <span>${esc(ago)}</span>
+                            </p>
+                        </div>
+                        <span class="text-[9px] bg-black/40 text-gray-500 px-2 py-1 rounded-lg border border-white/5 whitespace-nowrap font-mono">${esc(b.patch)}</span>
+                    </div>
+
+                    <!-- Tags -->
+                    <div class="flex flex-wrap gap-1.5 mb-3 mt-2">
+                        <span class="augment-badge text-[10px] bg-[#66FCF1]/10 text-[#66FCF1] px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider">${esc(b.augment)}</span>
+                        ${Array.isArray(b.tags) ? b.tags.map(t => `<span class="text-[10px] bg-white/5 text-gray-400 px-2 py-1 rounded-lg capitalize">${esc(t)}</span>`).join('') : ''}
+                    </div>
+
+                    <!-- Loadout Preview -->
+                    <div class="flex items-center gap-2 mb-3 p-3 bg-black/25 rounded-xl border border-white/5">
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            ${suit ? `
+                                <div class="preview-item suit-box r-${suit.rarity || 'common'}">
+                                    <img src="${suit.image}" alt="${esc(suit.name)}" onerror="this.style.opacity='0.15'">
+                                    ${buildSuitTooltip(suit)}
+                                </div>
+                            ` : ''}
+                            ${shield ? `
+                                <div class="preview-item r-${shield.rarity || 'common'}">
+                                    <img src="${shield.image}" alt="${esc(shield.name)}" onerror="this.style.opacity='0.15'">
+                                    ${buildItemTooltip(shield, 'Shield')}
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        ${(suit || shield) && weapons.length > 0 ? '<div class="w-px h-9 bg-white/10 flex-shrink-0"></div>' : ''}
+
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            ${weapons.length > 0 ? weapons.map(w => `
+                                <div class="preview-item r-${w.rarity || 'common'}">
+                                    <img src="${w.image}" alt="${esc(w.name)}" onerror="this.style.opacity='0.15'">
+                                    ${buildItemTooltip(w, 'Weapon')}
+                                </div>
+                            `).join('') : '<div class="text-[10px] text-gray-600 italic px-1">No weapons</div>'}
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div class="bg-black/30 rounded-xl p-3 border border-white/5">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-[9px] text-gray-500 uppercase tracking-wider font-bold">Weight</span>
+                                <span class="text-white font-hud font-bold text-sm">${b.stats.weight}kg</span>
+                            </div>
+                            <div class="stat-bar">
+                                <div class="stat-bar-fill" style="width: ${weightPct}%; background: ${wColor};"></div>
+                            </div>
+                        </div>
+                        <div class="bg-black/30 rounded-xl p-3 border border-white/5">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-[9px] text-gray-500 uppercase tracking-wider font-bold">Value</span>
+                                <span class="text-[#FFD700] font-hud font-bold text-sm">$${b.stats.value.toLocaleString()}</span>
+                            </div>
+                            <div class="flex items-center gap-1 mt-1">
+                                <span class="text-[9px] text-gray-600">${b.stats.weaponCount || 0} weapon${(b.stats.weaponCount || 0) !== 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="mt-auto pt-4 flex gap-2 border-t border-white/5 items-center">
+                        <a href="index.html?b=${b.buildCode}" onclick="handleView('${b.id}')"
+                            class="flex-1 text-center bg-[#66FCF1]/5 hover:bg-[#66FCF1] hover:text-black text-[#66FCF1] font-bold py-2.5 rounded-xl transition-all text-xs uppercase tracking-widest border border-[#66FCF1]/20 hover:border-[#66FCF1] flex items-center justify-center gap-2">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            Load
+                        </a>
+                        <button onclick="handleLike('${b.id}', this)"
+                            class="like-btn px-3 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 ${isLiked ? 'text-[#FFD700] liked' : 'text-gray-500 hover:text-[#FFD700]'} transition-all flex items-center gap-1.5"
+                            ${isLiked ? 'title="Already liked"' : 'title="Like this build"'}>
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                            <span class="like-count text-xs font-mono font-bold">${b.likes || 0}</span>
+                        </button>
+                        <button onclick="shareBuildLink('${b.buildCode}', this)" class="share-btn" title="Copy link">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                            </svg>
+                        </button>
+                        <div class="flex items-center gap-1 px-2 text-gray-600" title="Views">
+                            <svg class="w-3.5 h-3.5 views-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <span class="text-[10px] font-mono">${b.views || 0}</span>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        // ===== LOAD BUILDS =====
+        async function loadBuilds() {
+            const q = query(collection(db, "builds"), limit(50));
+            try {
+                const snapshot = await getDocs(q);
+                allBuilds = [];
+                snapshot.forEach(d => allBuilds.push({ id: d.id, ...d.data() }));
+                updateHeroStats();
+                renderBuilds();
+            } catch (e) {
+                console.error(e);
+                document.getElementById('build-grid').innerHTML = `
+                    <div class="col-span-full text-center py-20 rounded-2xl border border-red-500/20 bg-red-500/5">
+                        <div class="text-4xl mb-4">⚠️</div>
+                        <p class="text-red-400 font-hud text-lg uppercase tracking-widest">Connection Error</p>
+                        <p class="text-gray-600 text-xs mt-2">Could not reach the database. Check console for details.</p>
+                    </div>`;
+            }
+        }
+
+
+        window.loadBuilds = loadBuilds;
+        loadBuilds();
+    </script>
+</body>
+
+</html>

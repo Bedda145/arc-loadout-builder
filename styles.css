@@ -1,0 +1,205 @@
+/* --- 1. Background Pattern --- */
+.bg-grid {
+    background-color: #0B0C10;
+    /* Creates a subtle technical grid */
+    background-image: 
+        linear-gradient(rgba(31, 40, 51, 0.5) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(31, 40, 51, 0.5) 1px, transparent 1px);
+    background-size: 30px 30px;
+}
+
+/* --- 2. Custom Utilities --- */
+.badge {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 2px;
+}
+
+/* --- 3. The Hologram Image Effect --- */
+img {
+    /* Default State: Blue-tinted, slightly transparent */
+    filter: sepia(100%) hue-rotate(170deg) saturate(200%) opacity(0.8);
+    mix-blend-mode: screen; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* On Hover: Restore full color and add the glow */
+.group:hover img {
+    /* We use 'filter' to combine drop-shadow with the removal of other effects */
+    filter: drop-shadow(0 0 8px rgba(102, 252, 241, 0.5)); 
+    opacity: 1;
+    mix-blend-mode: normal;
+    transform: scale(1.1);
+}
+
+/* --- 4. Scrollbar Styling --- */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #0B0C10; 
+}
+::-webkit-scrollbar-thumb {
+    background: #1F2833; 
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #45A29E; 
+}
+
+/* =========================
+   ARC BUILDER FIX PACK
+   - context menu hidden/styled
+   - rarity borders/glow
+   - slot hover + qty/remove badges
+   - fast add button in pool
+   ========================= */
+
+#context-menu{
+  display:none;
+  position:fixed;
+  z-index:9999;
+  min-width:220px;
+  background:rgba(10,12,16,.96);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:14px;
+  padding:8px;
+  box-shadow:0 18px 60px rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+}
+#context-menu a,
+#context-menu button{
+  display:block;
+  width:100%;
+  text-align:left;
+  background:transparent;
+  border:0;
+  color:rgba(255,255,255,.75);
+  padding:9px 10px;
+  border-radius:10px;
+  font-size:12px;
+  cursor:pointer;
+}
+#context-menu a:hover,
+#context-menu button:hover{
+  background:rgba(255,255,255,.06);
+  color:#fff;
+}
+#context-menu .danger{ color:#ff5b5b; }
+
+.slot-hover{
+  outline:2px solid rgba(102,252,241,.55);
+  outline-offset:-2px;
+  background:rgba(255,255,255,.04);
+}
+
+.qty-badge{
+  position:absolute;
+  right:6px;
+  bottom:6px;
+  background:rgba(0,0,0,.75);
+  color:rgba(255,255,255,.85);
+  font-size:11px;
+  padding:2px 6px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.12);
+}
+.slot-remove{
+  position:absolute;
+  top:6px;
+  right:6px;
+  width:18px;
+  height:18px;
+  border-radius:6px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.55);
+  color:rgba(255,255,255,.7);
+  font-size:12px;
+  line-height:16px;
+  display:none;
+  cursor:pointer;
+}
+.group:hover .slot-remove{ display:block; }
+.slot-remove:hover{ color:#fff; border-color:rgba(255,255,255,.25); }
+
+.item-selected{
+  outline:2px solid rgba(102,252,241,.5);
+  outline-offset:-2px;
+}
+
+.pool-add-btn{
+  margin-left:auto;
+  width:28px;
+  height:28px;
+  border-radius:10px;
+  border:1px solid rgba(102,252,241,.35);
+  background:rgba(0,0,0,.35);
+  color:rgba(102,252,241,.95);
+  font-weight:700;
+  cursor:pointer;
+}
+.pool-add-btn:hover{
+  background:rgba(102,252,241,.10);
+  border-color:rgba(102,252,241,.55);
+}
+
+/* Rarity borders (applies to pool rows and slots) */
+/* Rarity borders (applies to pool rows and slots) */
+.rarity-common{
+  border-color:rgba(255,255,255,.16) !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06);
+  background: linear-gradient(145deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)) !important;
+}
+.rarity-uncommon{
+  border-color:rgba(120,255,130,.55) !important;
+  box-shadow: 0 0 0 1px rgba(120,255,130,.18);
+  background: linear-gradient(145deg, rgba(120,255,130,0.10), rgba(120,255,130,0.02)) !important;
+}
+.rarity-rare{
+  border-color:rgba(93,152,255,.55) !important;
+  box-shadow: 0 0 0 1px rgba(93,152,255,.18);
+  background: linear-gradient(145deg, rgba(93,152,255,0.10), rgba(93,152,255,0.02)) !important;
+}
+.rarity-epic{
+  border-color:rgba(184,108,255,.60) !important;
+  box-shadow: 0 0 0 1px rgba(184,108,255,.20);
+  background: linear-gradient(145deg, rgba(184,108,255,0.10), rgba(184,108,255,0.02)) !important;
+}
+.rarity-legendary{
+  border-color:rgba(255,215,0,.60) !important;
+  box-shadow: 0 0 0 1px rgba(255,215,0,.20);
+  background: linear-gradient(145deg, rgba(255,215,0,0.10), rgba(255,215,0,0.02)) !important;
+}
+
+/* --- Logo Protection --- */
+nav img[alt*="ARC"] {
+    filter: none !important;
+    mix-blend-mode: normal !important;
+    opacity: 1 !important;
+}
+nav .group:hover img[alt*="ARC"] {
+    filter: drop-shadow(0 0 12px rgba(102, 252, 241, 0.4)) !important;
+    mix-blend-mode: normal !important;
+    transform: none !important;
+}
+
+/* --- Logo overflow navbar --- */
+nav {
+    overflow: visible !important;
+}
+nav img[alt*="ARC"] {
+    height: 112px !important;
+    margin-top: -28px;
+    margin-bottom: -28px;
+    position: relative;
+    z-index: 60;
+}
+
+/* --- Keep all navbars thin --- */
+nav > div {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+}

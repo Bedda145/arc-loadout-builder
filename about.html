@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F22F32GJ28"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-F22F32GJ28');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About // ARC Builder</title>
+    <meta name="description" content="About the ARC Raiders Loadout Builder. A student-built community tool for planning ARC Raiders gear and loadouts.">
+    <meta name="keywords" content="ARC Raiders, loadout builder, about, Bedda145">
+    <meta name="author" content="Bedda145">
+
+    <meta property="og:title" content="About — ARC Raiders Builder">
+    <meta property="og:description" content="About the ARC Raiders Loadout Builder. Built by Bedda145.">
+    <meta property="og:image" content="https://arc-loadout-builder.pages.dev/assets/arc_logo.png">
+    <meta property="og:url" content="https://arc-loadout-builder.pages.dev/about.html">
+    <meta property="og:type" content="website">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Rajdhani:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="assets/arc_logo.png">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        arcBlack: '#0B0C10',
+                        arcDark: '#1F2833',
+                        arcGray: '#C5C6C7',
+                        arcCyan: '#66FCF1',
+                        arcBlue: '#45A29E',
+                        arcGold: '#FFD700'
+                    },
+                    fontFamily: {
+                        hud: ['Rajdhani', 'sans-serif'],
+                        body: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body
+    class="bg-arcBlack text-arcGray font-body selection:bg-arcCyan selection:text-arcBlack overflow-x-hidden flex flex-col min-h-screen">
+
+    <nav class="border-b border-arcDark bg-black/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
+                <a href="index.html" class="flex items-center gap-3 group">
+                    <img src="assets/arc_logo.png" alt="ARC Builder" 
+                        class="h-36 w-auto object-contain drop-shadow-lg"
+                        style="filter: none; mix-blend-mode: normal;"
+                        draggable="false"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <div class="text-2xl font-hud font-bold text-white tracking-widest" style="display:none;">
+                        ARC <span class="text-arcCyan">BUILDER</span>
+                    </div>
+                </a>
+            <div class="flex gap-6 text-sm font-hud font-bold tracking-widest uppercase">
+                <a href="index.html" class="text-gray-500 hover:text-white transition-colors">Builder</a>
+                <a href="about.html" class="text-arcCyan border-b-2 border-arcCyan">About</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 flex items-center justify-center p-6">
+        <div class="max-w-2xl w-full space-y-8">
+
+            <div class="bg-arcDark border border-gray-800 p-8 rounded-xl shadow-2xl relative overflow-hidden group">
+                <div
+                    class="absolute top-0 right-0 p-4 opacity-10 font-hud text-9xl font-bold select-none text-white pointer-events-none">
+                    DEV</div>
+
+                <div class="relative z-10">
+                    <span class="badge bg-arcGold text-black mb-4 inline-block">Student Project</span>
+                    <h1 class="text-4xl font-hud font-bold text-white mb-4">About The Project</h1>
+
+                    <div class="space-y-4 text-gray-300 leading-relaxed">
+                        <p>
+                            Hi, I'm <strong class="text-white">Bedda145</strong>. I'm a Year 2 student at <span
+                                class="text-arcCyan">LBS Kreativa Gymnasiet</span> in Gothenburg.
+                        </p>
+                        <p>
+                            I built this tool to help the <strong>ARC Raiders</strong> community calculate crafting
+                            costs and optimize builds. This project helps me learn Front-End Development (HTML, JS,
+                            Tailwind) while making something useful for the game we love.
+                        </p>
+                    </div>
+
+                    <div class="flex gap-2 mt-6">
+                        <span
+                            class="px-2 py-1 bg-black/50 border border-gray-700 rounded text-[10px] uppercase tracking-wider text-gray-500">Stack</span>
+                        <span
+                            class="px-2 py-1 bg-blue-900/30 border border-blue-500/30 rounded text-[10px] uppercase tracking-wider text-blue-300">JavaScript</span>
+                        <span
+                            class="px-2 py-1 bg-cyan-900/30 border border-cyan-500/30 rounded text-[10px] uppercase tracking-wider text-cyan-300">Tailwind</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-arcDark to-[#121418] border border-arcCyan/30 p-8 rounded-xl text-center">
+                <h2 class="text-2xl font-hud font-bold text-white mb-2">Support Development</h2>
+                <p class="text-sm text-gray-400 mb-6 max-w-md mx-auto">
+                    This tool is free and open source. If it helped you save money in-game, consider buying me a coffee
+                    to fuel late-night coding sessions!
+                </p>
+
+                <a href="https://ko-fi.com/bedda145" target="_blank"
+                    class="inline-flex items-center gap-3 px-8 py-4 bg-arcCyan hover:bg-cyan-400 text-black font-hud font-bold text-lg uppercase tracking-widest rounded transition-all shadow-[0_0_20px_rgba(102,252,241,0.4)] hover:shadow-[0_0_30px_rgba(102,252,241,0.6)] hover:-translate-y-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Tip via Ko-fi / PayPal
+                </a>
+            </div>
+
+            <div class="text-center">
+                <a href="index.html"
+                    class="text-xs font-mono text-gray-500 hover:text-white uppercase tracking-widest transition-colors">
+                    [ Return to Loadout Builder ]
+                </a>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="border-t border-arcDark bg-black/50 py-6 mt-auto">
+        <div class="text-center text-[10px] text-gray-600 uppercase tracking-widest">
+            Arc Raiders is a trademark of Embark Studios. This is a fan site.
+        </div>
+    </footer>
+
+</body>
+
+</html>
