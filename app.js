@@ -1350,7 +1350,7 @@ window.submitBuild = submitBuild;
 window.undoLastAction = undoLastAction;
 window.undoClear = undoClear;
 
-window.copyDiscordSummary = copyDiscordSummary;
+window.openDiscord = openDiscord;
 
 window.contextAction = contextAction;
 
