@@ -2448,25 +2448,10 @@ function loadFromUrl() {
 }
 
 // ------------------------------------------------------------
-// 16) DISCORD COPY
+// 16) DISCORD
 // ------------------------------------------------------------
-async function copyDiscordSummary() {
-  const url = new URL(location.href);
-  url.searchParams.set("b", enc(serializeBuild()));
-
-  const w = $("weight-display")?.innerText || "?";
-  const maxW = $("max-weight-display")?.innerText || "?";
-  const v = $("total-value")?.innerText || "$?";
-
-  const text =
-    `**ARC BUILD**\n` +
-    `Augment: ${gameState.currentSuit.name}\n` +
-    `Encumbrance: ${w} / ${maxW} kg\n` +
-    `Value: ${v}\n` +
-    `Link: ${url.toString()}`;
-
-  const ok = await copyText(text);
-  showToast(ok ? "Copied for Discord!" : "Copy Failed");
+function openDiscord() {
+  window.open("https://discord.gg/KB3kASNMMP", "_blank");
 }
 
 // ------------------------------------------------------------
