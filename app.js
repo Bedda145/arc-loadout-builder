@@ -21,6 +21,7 @@
 
 console.log("ARC Builder Loaded (fix pack v4)");
 window.onerror = (m, s, l, c, e) => console.error("JS Error:", m, "at", (l || "?") + ":" + (c || "?"), e || "");
+window.addEventListener("unhandledrejection", (e) => console.error("Unhandled promise rejection:", e.reason));
 
 const $ = (id) => document.getElementById(id);
 
@@ -1212,14 +1213,23 @@ function validateSlot(slot) {
     slot.qty = 1;
   }
   const item = getItemById(slot.id);
-  if (slot.qty > (item.stackMax || 1)) slot.qty = item.stackMax || 1;
-  if (slot.atts && typeof slot.atts === "object") {
+  const max = item.stackMax || 1;
+  if (slot.qty > max) slot.qty = max;
+
+  // Never trust locked from external payloads — applyLockedAugments() handles it
+  if ("locked" in slot) delete slot.locked;
+
+  // Strip atts from non-weapons
+  if (item.category !== "equipment") {
+    if ("atts" in slot) delete slot.atts;
+  } else if (slot.atts && typeof slot.atts === "object") {
     for (const key of Object.keys(slot.atts)) {
       if (slot.atts[key] !== null && !getAttachmentById(slot.atts[key])) {
         slot.atts[key] = null;
       }
     }
   }
+
   return slot;
 }
 
@@ -1269,8 +1279,6 @@ function init() {
   initSuitSelector();
   loadPresets();
 
-  changeSuit(gameState.currentSuit?.id || suitsDatabase[0].id);
-
   const augIcon = $("augment-icon");
   if (augIcon && !augIcon._bound) {
     augIcon._bound = true;
@@ -1299,17 +1307,18 @@ function init() {
     la.addEventListener("change", updateStats);
   }
 
-    ensureModalStyles();
-    ensureQtyModal();
+  ensureModalStyles();
+  ensureQtyModal();
   ensureAttachmentsModal();
   ensureContextMenuAttachmentsButton();
   ensureRichTooltip();
+  ensureRawMatsModal();
 
   hideContextMenu();
   closeQtyPicker();
   closeAttachmentsModal();
 
-  // FIX #4: no double render on URL load
+  // Load URL build FIRST — this calls commitState() internally
   let loadedFromUrl = false;
   try {
     loadedFromUrl = loadFromUrl();
@@ -1317,10 +1326,11 @@ function init() {
     console.warn("loadFromUrl failed:", e);
   }
 
+  // Only apply default suit if no URL build was loaded
   if (!loadedFromUrl) {
-    renderGrid();
-    updateStats();
+    changeSuit(gameState.currentSuit?.id || suitsDatabase[0].id);
   }
+
   renderItemPool();
 }
 
@@ -1467,20 +1477,21 @@ function addItemToSlot(item, targetCat, targetIdx, qty = 1) {
 
   if (!validateTarget(item, targetCat)) return false;
 
-  saveState();
-
-  if (targetCat === "shield") {
-    gameState.shield = item;
-    commitState();
-    return true;
-  }
-
+  // Check lock BEFORE saveState so we don't create dead undo entries
   if (targetCat === "augmented") {
     const existing = gameState.augmented[targetIdx];
     if (existing && existing.locked) {
       showToast("Slot is locked");
       return false;
     }
+  }
+
+  saveState();
+
+  if (targetCat === "shield") {
+    gameState.shield = item;
+    commitState();
+    return true;
   }
 
   const slotData = makeSlotData(item, Math.min(qty, item.stackMax || 1));
@@ -1500,6 +1511,11 @@ function autoAddItem(item, qty = 1) {
   qty = Math.floor(qty);
   if (!Number.isFinite(qty) || qty <= 0) return false;
 
+  // Validate shield BEFORE saving undo state
+  if (item.category === "shield") {
+    if (!validateTarget(item, "shield")) return false;
+  }
+
   saveState();
 
   if (item.category === "equipment") {
@@ -1507,7 +1523,6 @@ function autoAddItem(item, qty = 1) {
     else if (!gameState.equipment[1]) gameState.equipment[1] = makeSlotData(item, 1);
     else addToBackpack(item, qty);
   } else if (item.category === "shield") {
-    if (!validateTarget(item, "shield")) return false;
     gameState.shield = item;
   } else if (item.category === "quick") {
     let left = addStackable(gameState.quickUse, item, qty);
@@ -1559,6 +1574,7 @@ function dragFromSlot(ev, cat, idx) {
 
   ev.dataTransfer.clearData();
   ev.dataTransfer.effectAllowed = "move";
+  ev.dataTransfer.setData("text/plain", d?.id || "");
   ev.dataTransfer.setData("application/json", JSON.stringify({ source: "slot", cat, idx }));
 }
 
@@ -1666,11 +1682,17 @@ function drop(ev, category, index) {
         if (!gameState.shield) return;
 
         if (category === "backpack") {
+          // Find target BEFORE saveState so failed drops don't pollute undo
+          let target = index;
+          if (gameState.backpack[target]) {
+            target = gameState.backpack.findIndex((s) => !s);
+          }
+          if (target === -1) { showToast("Backpack Full!"); return; }
+
           saveState();
+
           const shieldItem = gameState.shield;
-          const empty = gameState.backpack.findIndex((s) => !s);
-          if (empty === -1) { showToast("Backpack Full!"); return; }
-          gameState.backpack[empty] = { id: shieldItem.id, qty: 1 };
+          gameState.backpack[target] = { id: shieldItem.id, qty: 1 };
           gameState.shield = null;
           commitState();
         } else {
@@ -1682,7 +1704,12 @@ function drop(ev, category, index) {
       if (data.source === "slot") {
         saveState();
         const ok = moveSlotToSlot(data.cat, data.idx, category, index);
-        if (ok) commitState();
+        if (ok) {
+          commitState();
+        } else {
+          // Remove the wasted undo entry
+          undoStack.pop();
+        }
         return;
       }
     } catch {}
@@ -1726,6 +1753,7 @@ function renderGrid() {
       shieldEl.ondragstart = (e) => {
         e.dataTransfer.clearData();
         e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", gameState.shield.id);
         e.dataTransfer.setData("application/json", JSON.stringify({ source: "shield" }));
       };
     } else {
@@ -2369,8 +2397,18 @@ function serializeBuild() {
   };
 }
 
-const enc = (obj) => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
-const dec = (str) => JSON.parse(decodeURIComponent(escape(atob(str))));
+const enc = (obj) => {
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  let bin = "";
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  return btoa(bin);
+};
+
+const dec = (str) => {
+  const bin = atob(str);
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+};
 
 async function copyText(text) {
   try {
@@ -2465,6 +2503,9 @@ function toggleLoadoutMenu(e) {
 }
 
 function handleGlobalClick(e) {
+  // Mark so the document click listener doesn't double-fire
+  if (e) e._arcHandled = true;
+
   const menu = $("loadout-menu");
   if (menu) {
     const clickedInside = e?.target?.closest && e.target.closest("#loadout-menu");
@@ -2807,20 +2848,33 @@ let attModalTarget = null;
 function ensureContextMenuAttachmentsButton() {
   const menu = $("context-menu");
   if (!menu) return;
-  if ($("ctx-attachments")) return;
 
-  const divider = menu.querySelector("div.h-px") || null;
+  let btn = $("ctx-attachments");
 
-  const btn = document.createElement("button");
-  btn.id = "ctx-attachments";
-  btn.className = "ctx-btn";
-  btn.type = "button";
-  btn.textContent = "Edit Attachments";
+  if (!btn) {
+    const divider = menu.querySelector("div.h-px") || null;
+
+    btn = document.createElement("button");
+    btn.id = "ctx-attachments";
+    btn.className = "ctx-btn";
+    btn.type = "button";
+    btn.textContent = "Edit Attachments";
+
+    if (divider) menu.insertBefore(btn, divider);
+    else menu.appendChild(btn);
+  }
+
+  // Always bind even if the button existed in HTML
+  if (!btn._bound) {
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      contextAction("attachments");
+    });
+  }
+
   btn.style.display = "none";
-  btn.addEventListener("click", () => contextAction("attachments"));
-
-  if (divider) menu.insertBefore(btn, divider);
-  else menu.appendChild(btn);
 }
 
 function ensureAttachmentsModal() {
@@ -3009,16 +3063,578 @@ function closeAttachmentsModal() {
   wrap.classList.remove("is-open");
   attModalTarget = null;
 }
-document.addEventListener("click", () => {
+document.addEventListener("click", (e) => {
+  // Skip if handleGlobalClick already ran from the body onclick
+  if (e._arcHandled) return;
   hideContextMenu();
 });
 document.addEventListener("contextmenu", (e) => {
   if (e.defaultPrevented) return;
-  const menu = $("context-menu");
-  if (!menu) return;
-  const inside = e.target.closest && e.target.closest("#context-menu");
+  const inside = e.target?.closest?.("#context-menu");
   if (!inside) hideContextMenu();
 });
 
 // ------------------------------------------------------------
-window.addEventListener("DOMContentLoaded", init);
+// 21) RAW MATERIALS BREAKDOWN
+// ------------------------------------------------------------
+
+// ===== RAW MATERIALS (base level — found in raid) =====
+const RAW_MATERIALS = new Set([
+  "Metal Parts","Rubber Parts","Plastic Parts","Fabric",
+  "Chemicals","Wires","Duct Tape","Steel Spring",
+  "ARC Alloy","Battery","Oil","Rope","Canister",
+  "Sensors","Magnet","Exodus",
+]);
+
+// ===== INTERMEDIATE RECIPES =====
+// Map from material name → sub-ingredients.
+// Aliases (short forms found in crafting strings) point to the same recipe.
+// Add/edit recipes here as you discover them in-game.
+const intermediateRecipes = {
+  "Mechanical Components": [{ name:"Metal Parts", qty:6 },{ name:"Rubber Parts", qty:4 }],
+  "Mech Comp":             [{ name:"Metal Parts", qty:6 },{ name:"Rubber Parts", qty:4 }],
+  // Add more intermediate breakdowns as you learn them:
+  // "Simple Gun Parts": [{ name:"Metal Parts", qty:3 },{ name:"Rubber Parts", qty:2 }],
+  // "Mod Components":   [{ name:"Mechanical Components", qty:2 },{ name:"Wires", qty:3 }],
+};
+
+// ===== PARSE CRAFTING STRING =====
+function parseCraftingString(str) {
+  if (!str) return null;
+  const lo = str.toLowerCase().trim();
+  if (!lo || lo.includes("see wiki") || lo.includes("found in raid") ||
+      lo.includes("built-in") || lo === "no blueprint required" || lo === "no data") {
+    return null;
+  }
+  const parts = str.split(/\s*\+\s*/).filter(Boolean);
+  const out = [];
+  for (const p of parts) {
+    const t = p.trim();
+    let m = t.match(/^(\d+)\s*x\s+(.+)$/i);
+    if (m) { out.push({ name:m[2].trim(), qty:parseInt(m[1],10) }); continue; }
+    m = t.match(/^(.+?)\s+x\s*(\d+)$/i);
+    if (m) { out.push({ name:m[1].trim(), qty:parseInt(m[2],10) }); continue; }
+    m = t.match(/^(\d+)\s+(.+)$/);
+    if (m) { out.push({ name:m[2].trim(), qty:parseInt(m[1],10) }); continue; }
+    if (t.length) out.push({ name:t, qty:1 });
+  }
+  return out.length ? out : null;
+}
+
+// ===== RESOLVE TO RAW (recursive) =====
+function resolveToRaw(ingredients, depth) {
+  if (depth === undefined) depth = 0;
+  if (depth > 10) return { raw:{}, unresolved:{} };
+  const raw = {}, unresolved = {};
+  for (const ing of ingredients) {
+    if (RAW_MATERIALS.has(ing.name)) {
+      raw[ing.name] = (raw[ing.name]||0) + ing.qty;
+    } else if (intermediateRecipes[ing.name]) {
+      const sub = intermediateRecipes[ing.name].map(function(r){
+        return { name:r.name, qty:r.qty*ing.qty };
+      });
+      const res = resolveToRaw(sub, depth+1);
+      for (const k in res.raw) raw[k] = (raw[k]||0) + res.raw[k];
+      for (const k in res.unresolved) unresolved[k] = (unresolved[k]||0) + res.unresolved[k];
+    } else {
+      unresolved[ing.name] = (unresolved[ing.name]||0) + ing.qty;
+    }
+  }
+  return { raw:raw, unresolved:unresolved };
+}
+
+// ===== COLLECT ALL MATERIALS FROM CURRENT LOADOUT =====
+function collectLoadoutMaterials() {
+  var directMats = {};
+  var items = [];
+
+  function addIng(sourceName, recipe, mult) {
+    if (!recipe) return;
+    if (!mult) mult = 1;
+    for (var i = 0; i < recipe.length; i++) {
+      var ing = recipe[i];
+      var key = ing.name;
+      if (!directMats[key]) directMats[key] = { qty:0, sources:[] };
+      directMats[key].qty += ing.qty * mult;
+      if (directMats[key].sources.indexOf(sourceName) === -1)
+        directMats[key].sources.push(sourceName);
+    }
+  }
+
+  // Weapons + attachments
+  for (var w = 0; w < gameState.equipment.length; w++) {
+    var slot = gameState.equipment[w];
+    if (!slot) continue;
+    var item = getItemById(slot.id);
+    if (!item) continue;
+    var recipe = parseCraftingString(item.crafting);
+    addIng(item.name, recipe, 1);
+    items.push({ name:item.name, recipe:recipe, qty:1, type:"weapon", parent:null });
+    if (slot.atts) {
+      var attKeys = Object.keys(slot.atts);
+      for (var a = 0; a < attKeys.length; a++) {
+        var attId = slot.atts[attKeys[a]];
+        if (!attId) continue;
+        var att = getAttachmentById(attId);
+        if (!att) continue;
+        var ar = parseCraftingString(att.crafting);
+        addIng(att.name, ar, 1);
+        items.push({ name:att.name, recipe:ar, qty:1, type:"attachment", parent:item.name });
+      }
+    }
+  }
+
+  // Shield
+  if (gameState.shield) {
+    var sr = parseCraftingString(gameState.shield.crafting);
+    addIng(gameState.shield.name, sr, 1);
+    items.push({ name:gameState.shield.name, recipe:sr, qty:1, type:"shield", parent:null });
+  }
+
+  // Other containers
+  var containers = [gameState.backpack, gameState.quickUse, gameState.safePocket, gameState.augmented];
+  for (var c = 0; c < containers.length; c++) {
+    var cont = containers[c];
+    if (!Array.isArray(cont)) continue;
+    for (var s = 0; s < cont.length; s++) {
+      var sl = cont[s];
+      if (!sl) continue;
+      var it = getItemById(sl.id);
+      if (!it) continue;
+      var re = parseCraftingString(it.crafting);
+      var qty = sl.qty || 1;
+      addIng(it.name, re, qty);
+      items.push({ name:it.name, recipe:re, qty:qty, type:it.category, parent:null });
+    }
+  }
+
+  return { directMats:directMats, items:items };
+}
+
+// ===== OWNED INVENTORY (localStorage) =====
+function getOwnedInventory() {
+  try { return JSON.parse(localStorage.getItem("arc_owned_mats")||"{}"); }
+  catch(e) { return {}; }
+}
+function setOwnedInventory(inv) {
+  localStorage.setItem("arc_owned_mats", JSON.stringify(inv));
+}
+function getOwnedQty(name) { return getOwnedInventory()[name] || 0; }
+function setOwnedQty(name, qty) {
+  var inv = getOwnedInventory();
+  if (qty <= 0) delete inv[name]; else inv[name] = qty;
+  setOwnedInventory(inv);
+}
+
+window.updateOwnedMat = function(input) {
+  var name = input.getAttribute("data-mat");
+  var qty = parseInt(input.value, 10) || 0;
+  setOwnedQty(name, qty);
+  var activeTab = $("rawmats-tabs") ? $("rawmats-tabs").querySelector(".rawmats-tab.active") : null;
+  renderRawMatsContent(activeTab ? activeTab.getAttribute("data-tab") : "direct");
+};
+
+// ===== SHOPPING LIST TEXT =====
+function generateShoppingListText(mats) {
+  var sorted = Object.keys(mats).map(function(k){ return [k, mats[k]]; })
+    .sort(function(a,b){ return b[1].qty - a[1].qty; });
+  var text = "=== ARC LOADOUT — CRAFTING MATERIALS ===\n";
+  text += "Augment: " + (gameState.currentSuit ? gameState.currentSuit.name : "—") + "\n\n";
+  for (var i = 0; i < sorted.length; i++) {
+    var name = sorted[i][0], data = sorted[i][1];
+    var owned = getOwnedQty(name);
+    var ownStr = owned > 0 ? "  (have " + owned + ", need " + Math.max(0, data.qty - owned) + ")" : "";
+    text += data.qty + "x " + name + ownStr + "\n";
+    if (data.sources.length) text += "   └ " + data.sources.join(", ") + "\n";
+  }
+  text += "\n--- Generated by ARC Builder ---\n";
+  text += "arc-loadout-builder.pages.dev";
+  return text;
+}
+
+// ===== MODAL =====
+function ensureRawMatsModal() {
+  if ($("rawmats-modal")) return;
+  var wrap = document.createElement("div");
+  wrap.id = "rawmats-modal";
+  wrap.className = "arc-modal-backdrop";
+  wrap.style.zIndex = "100001";
+  wrap.innerHTML = [
+    '<div class="arc-modal-card" style="max-width:640px;max-height:85vh;display:flex;flex-direction:column;">',
+      '<div class="arc-modal-header" style="flex-shrink:0;">',
+        '<div class="arc-modal-icon-wrap" style="background:rgba(102,252,241,0.08);border-color:rgba(102,252,241,0.2);">',
+          '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(102,252,241,0.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">',
+            '<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>',
+            '<polyline points="3.27 6.96 12 12.01 20.73 6.96"/>',
+            '<line x1="12" y1="22.08" x2="12" y2="12"/>',
+          '</svg>',
+        '</div>',
+        '<div style="flex:1;min-width:0;">',
+          '<div class="arc-modal-title">Raw Materials</div>',
+          '<div class="arc-modal-sub">Full loadout crafting breakdown</div>',
+        '</div>',
+        '<button class="arc-modal-close" id="rawmats-close">✕</button>',
+      '</div>',
+      '<div class="rawmats-tabs" id="rawmats-tabs">',
+        '<button class="rawmats-tab active" data-tab="direct">As Equipped</button>',
+        '<button class="rawmats-tab" data-tab="raw">From Scratch</button>',
+        '<button class="rawmats-tab" data-tab="tree">Crafting Tree</button>',
+      '</div>',
+      '<div class="rawmats-body" id="rawmats-body" style="flex:1;overflow-y:auto;"></div>',
+      '<div class="arc-modal-footer rawmats-footer" style="flex-shrink:0;">',
+        '<label class="rawmats-toggle">',
+          '<input type="checkbox" id="rawmats-show-owned" class="accent-[#66FCF1]">',
+          '<span>Show Owned</span>',
+        '</label>',
+        '<div style="display:flex;gap:8px;margin-left:auto;">',
+          '<button class="arc-btn arc-btn-ghost" id="rawmats-copy">📋 Copy List</button>',
+          '<button class="arc-btn arc-btn-primary" id="rawmats-export">📥 Export Image</button>',
+        '</div>',
+      '</div>',
+    '</div>'
+  ].join("");
+  document.body.appendChild(wrap);
+
+  $("rawmats-close").onclick = closeRawMatsModal;
+  wrap.addEventListener("click", function(e){ if(e.target===wrap) closeRawMatsModal(); });
+  document.addEventListener("keydown", function(e){
+    if(e.key==="Escape" && $("rawmats-modal").classList.contains("is-open")) closeRawMatsModal();
+  });
+
+  $("rawmats-tabs").addEventListener("click", function(e){
+    var tab = e.target.closest("[data-tab]");
+    if(!tab) return;
+    $("rawmats-tabs").querySelectorAll(".rawmats-tab").forEach(function(t){ t.classList.remove("active"); });
+    tab.classList.add("active");
+    renderRawMatsContent(tab.getAttribute("data-tab"));
+  });
+
+  $("rawmats-show-owned").addEventListener("change", function(){
+    var at = $("rawmats-tabs").querySelector(".rawmats-tab.active");
+    renderRawMatsContent(at ? at.getAttribute("data-tab") : "direct");
+  });
+
+  $("rawmats-copy").addEventListener("click", async function(){
+    var r = collectLoadoutMaterials();
+    var text = generateShoppingListText(r.directMats);
+    var ok = await copyText(text);
+    showToast(ok ? "Materials copied!" : "Copy failed");
+  });
+
+  $("rawmats-export").addEventListener("click", function(){ exportMatsAsImage(); });
+}
+
+function openRawMatsModal() {
+  ensureRawMatsModal();
+  $("rawmats-modal").classList.add("is-open");
+  var tabs = $("rawmats-tabs").querySelectorAll(".rawmats-tab");
+  tabs.forEach(function(t){ t.classList.remove("active"); });
+  $("rawmats-tabs").querySelector("[data-tab='direct']").classList.add("active");
+  renderRawMatsContent("direct");
+}
+
+function closeRawMatsModal() {
+  var w = $("rawmats-modal");
+  if(w) w.classList.remove("is-open");
+}
+
+// ===== RENDER TAB CONTENT =====
+function renderRawMatsContent(tab) {
+  var body = $("rawmats-body");
+  if(!body) return;
+  var data = collectLoadoutMaterials();
+  var showOwned = $("rawmats-show-owned") ? $("rawmats-show-owned").checked : false;
+
+  if (Object.keys(data.directMats).length === 0 && data.items.length === 0) {
+    body.innerHTML =
+      '<div style="text-align:center;padding:48px 24px;">'+
+        '<div style="font-size:40px;opacity:0.2;margin-bottom:16px;">📦</div>'+
+        '<div style="color:rgba(255,255,255,.4);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Empty Loadout</div>'+
+        '<div style="color:rgba(255,255,255,.25);font-size:12px;margin-top:8px;">Add items to see crafting materials</div>'+
+      '</div>';
+    return;
+  }
+
+  if (tab === "direct") renderDirectMats(body, data.directMats, showOwned);
+  else if (tab === "raw") renderFromScratch(body, data.directMats, showOwned);
+  else if (tab === "tree") renderCraftingTree(body, data.items);
+}
+
+function renderDirectMats(body, mats, showOwned) {
+  var sorted = Object.keys(mats).map(function(k){ return [k, mats[k]]; })
+    .sort(function(a,b){ return b[1].qty - a[1].qty; });
+  var totalQty = 0;
+  sorted.forEach(function(e){ totalQty += e[1].qty; });
+
+  var html =
+    '<div class="rawmats-summary">'+
+      '<div class="rawmats-summary-item"><span class="rawmats-summary-val">'+sorted.length+'</span><span class="rawmats-summary-label">Materials</span></div>'+
+      '<div class="rawmats-summary-item"><span class="rawmats-summary-val">'+totalQty+'</span><span class="rawmats-summary-label">Total Qty</span></div>'+
+    '</div><div class="rawmats-list">';
+
+  for (var i = 0; i < sorted.length; i++) {
+    var name = sorted[i][0], d = sorted[i][1];
+    var owned = showOwned ? getOwnedQty(name) : 0;
+    var needed = Math.max(0, d.qty - owned);
+    var complete = showOwned && owned >= d.qty;
+    html += '<div class="rawmats-row'+(complete?' rawmats-complete':'')+'">';
+    html += '<div class="rawmats-row-main">';
+    html += '<div class="rawmats-qty">'+d.qty+'x</div>';
+    html += '<div class="rawmats-name">'+escHtml(name)+'</div>';
+    if (complete) html += '<span class="rawmats-check">✓</span>';
+    html += '</div>';
+    html += '<div class="rawmats-row-detail">';
+    html += '<span class="rawmats-sources">'+d.sources.map(escHtml).join(' · ')+'</span>';
+    if (showOwned) {
+      html += '<div class="rawmats-owned-wrap">';
+      html += '<span class="rawmats-owned-label">Have:</span>';
+      html += '<input type="number" class="rawmats-owned-input" value="'+owned+'" min="0" data-mat="'+escHtml(name)+'" onchange="updateOwnedMat(this)">';
+      if (needed > 0) html += '<span class="rawmats-still-need">Need '+needed+'</span>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+function renderFromScratch(body, mats, showOwned) {
+  var allIng = Object.keys(mats).map(function(k){ return { name:k, qty:mats[k].qty }; });
+  var res = resolveToRaw(allIng);
+  var rawSorted = Object.keys(res.raw).map(function(k){ return [k, res.raw[k]]; })
+    .sort(function(a,b){ return b[1]-a[1]; });
+  var unkSorted = Object.keys(res.unresolved).map(function(k){ return [k, res.unresolved[k]]; })
+    .sort(function(a,b){ return b[1]-a[1]; });
+
+  var html =
+    '<div class="rawmats-summary">'+
+      '<div class="rawmats-summary-item"><span class="rawmats-summary-val" style="color:rgba(102,252,241,.95);">'+rawSorted.length+'</span><span class="rawmats-summary-label">Raw Materials</span></div>'+
+      '<div class="rawmats-summary-item"><span class="rawmats-summary-val" style="color:rgba(255,180,50,.9);">'+unkSorted.length+'</span><span class="rawmats-summary-label">Unmapped</span></div>'+
+    '</div>';
+
+  if (rawSorted.length) {
+    html += '<div class="rawmats-section-label">Base Raw Materials</div><div class="rawmats-list">';
+    for (var i = 0; i < rawSorted.length; i++) {
+      var n = rawSorted[i][0], q = rawSorted[i][1];
+      var ow = showOwned ? getOwnedQty(n) : 0;
+      var nd = Math.max(0, q-ow);
+      var cp = showOwned && ow >= q;
+      html += '<div class="rawmats-row'+(cp?' rawmats-complete':'')+'">';
+      html += '<div class="rawmats-row-main">';
+      html += '<div class="rawmats-qty rawmats-qty-raw">'+q+'x</div>';
+      html += '<div class="rawmats-name">'+escHtml(n)+'</div>';
+      if (cp) html += '<span class="rawmats-check">✓</span>';
+      html += '</div>';
+      if (showOwned) {
+        html += '<div class="rawmats-row-detail"><div class="rawmats-owned-wrap">';
+        html += '<span class="rawmats-owned-label">Have:</span>';
+        html += '<input type="number" class="rawmats-owned-input" value="'+ow+'" min="0" data-mat="'+escHtml(n)+'" onchange="updateOwnedMat(this)">';
+        if (nd > 0) html += '<span class="rawmats-still-need">Need '+nd+'</span>';
+        html += '</div></div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  if (unkSorted.length) {
+    html += '<div class="rawmats-section-label" style="color:rgba(255,180,50,.8);">Intermediate — recipe not yet mapped</div>';
+    html += '<div class="rawmats-list">';
+    for (var j = 0; j < unkSorted.length; j++) {
+      html += '<div class="rawmats-row rawmats-unknown"><div class="rawmats-row-main">';
+      html += '<div class="rawmats-qty">'+unkSorted[j][1]+'x</div>';
+      html += '<div class="rawmats-name">'+escHtml(unkSorted[j][0])+'</div>';
+      html += '<span class="rawmats-unknown-badge">?</span>';
+      html += '</div></div>';
+    }
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+function renderCraftingTree(body, items) {
+  if (!items.length) {
+    body.innerHTML = '<div style="text-align:center;padding:48px;color:rgba(255,255,255,.3);">No craftable items in loadout</div>';
+    return;
+  }
+
+  function getTreeImage(name) {
+    for (var i = 0; i < itemsDatabase.length; i++) {
+      if (itemsDatabase[i].name === name) return itemsDatabase[i].image;
+    }
+    for (var a = 0; a < attachmentsDatabase.length; a++) {
+      if (attachmentsDatabase[a].name === name) return attachmentsDatabase[a].image;
+    }
+    return null;
+  }
+
+  function iconHTML(name) {
+    var src = getTreeImage(name);
+    if (src) {
+      return '<div class="rawmats-tree-icon-wrap"><img src="' + escHtml(src) + '" class="rawmats-tree-img" onerror="this.style.opacity=\'0.15\'"></div>';
+    }
+    return '<div class="rawmats-tree-icon-wrap rawmats-tree-icon-fallback">?</div>';
+  }
+
+  function recipeHTML(recipe, qty) {
+    if (!recipe || !recipe.length) return '<div class="rawmats-tree-no-recipe">No recipe data / Found in raid</div>';
+    var h = '<div class="rawmats-tree-recipe">';
+    for (var r = 0; r < recipe.length; r++) {
+      var ing = recipe[r];
+      var total = ing.qty * (qty || 1);
+      var isRaw = RAW_MATERIALS.has(ing.name);
+      var hasSubRecipe = !!intermediateRecipes[ing.name];
+      h += '<div class="rawmats-tree-ing' + (isRaw ? ' rawmats-tree-raw' : '') + '">';
+      h += '<span class="rawmats-tree-line">└</span>';
+      h += '<span class="rawmats-tree-ing-qty">' + total + 'x</span>';
+      h += '<span class="rawmats-tree-ing-name">' + escHtml(ing.name) + '</span>';
+      if (isRaw) h += ' <span class="rawmats-raw-badge">RAW</span>';
+      h += '</div>';
+
+      if (hasSubRecipe && !isRaw) {
+        var sub = intermediateRecipes[ing.name];
+        for (var s = 0; s < sub.length; s++) {
+          var subTotal = sub[s].qty * total;
+          var subRaw = RAW_MATERIALS.has(sub[s].name);
+          h += '<div class="rawmats-tree-ing' + (subRaw ? ' rawmats-tree-raw' : '') + '" style="padding-left:24px;">';
+          h += '<span class="rawmats-tree-line" style="color:rgba(102,252,241,0.15);">└</span>';
+          h += '<span class="rawmats-tree-ing-qty">' + subTotal + 'x</span>';
+          h += '<span class="rawmats-tree-ing-name">' + escHtml(sub[s].name) + '</span>';
+          if (subRaw) h += ' <span class="rawmats-raw-badge">RAW</span>';
+          h += '</div>';
+        }
+      }
+    }
+    h += '</div>';
+    return h;
+  }
+
+  var groups = [];
+  var attachmentsByParent = {};
+
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    if (it.parent) {
+      if (!attachmentsByParent[it.parent]) attachmentsByParent[it.parent] = [];
+      attachmentsByParent[it.parent].push(it);
+    } else {
+      groups.push(it);
+    }
+  }
+
+  var html = '<div class="rawmats-tree">';
+
+  for (var g = 0; g < groups.length; g++) {
+    var grp = groups[g];
+    var qtyNote = grp.qty > 1 ? ' ×' + grp.qty : '';
+
+    html += '<div class="rawmats-tree-item">';
+    html += '<div class="rawmats-tree-header">';
+    html += iconHTML(grp.name);
+    html += '<span class="rawmats-tree-name">' + escHtml(grp.name) + qtyNote + '</span>';
+    html += '</div>';
+    html += recipeHTML(grp.recipe, grp.qty);
+
+    var children = attachmentsByParent[grp.name];
+    if (children && children.length) {
+      html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.04);">';
+      html += '<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:rgba(255,255,255,0.25);margin-bottom:8px;padding-left:4px;">Attachments</div>';
+
+      for (var c = 0; c < children.length; c++) {
+        var ch = children[c];
+        html += '<div style="margin-left:12px;margin-bottom:8px;padding:8px 10px;background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.03);border-radius:10px;">';
+        html += '<div class="rawmats-tree-header" style="margin-bottom:4px;">';
+        html += iconHTML(ch.name);
+        html += '<span class="rawmats-tree-name" style="font-size:12px;">' + escHtml(ch.name) + '</span>';
+        html += '</div>';
+        html += recipeHTML(ch.recipe, ch.qty);
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
+  }
+
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+// ===== EXPORT AS IMAGE =====
+function exportMatsAsImage() {
+  var data = collectLoadoutMaterials();
+  var sorted = Object.keys(data.directMats).map(function(k){ return [k, data.directMats[k]]; })
+    .sort(function(a,b){ return b[1].qty - a[1].qty; });
+  if (!sorted.length) { showToast("No materials to export"); return; }
+
+  var canvas = document.createElement("canvas");
+  var ctx = canvas.getContext("2d");
+  var W = 600, rowH = 32, headerH = 80, footerH = 40;
+  var H = headerH + sorted.length * rowH + footerH + 20;
+
+  canvas.width = W * 2;
+  canvas.height = H * 2;
+  ctx.scale(2, 2);
+
+  var grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,"#14161c"); grad.addColorStop(1,"#0b0c10");
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
+
+  ctx.fillStyle = "rgba(102,252,241,0.4)"; ctx.fillRect(0,0,W,2);
+
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.font = "bold 20px Rajdhani, Segoe UI, sans-serif";
+  ctx.fillText("CRAFTING MATERIALS", 24, 36);
+
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.font = "600 12px Inter, Segoe UI, sans-serif";
+  ctx.fillText((gameState.currentSuit?gameState.currentSuit.name:"Loadout") + " — " + sorted.length + " materials", 24, 56);
+
+  ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fillRect(24,68,W-48,1);
+
+  var y = headerH;
+  for (var i = 0; i < sorted.length; i++) {
+    var name = sorted[i][0], d = sorted[i][1];
+    if (i % 2 === 0) { ctx.fillStyle = "rgba(255,255,255,0.02)"; ctx.fillRect(24,y,W-48,rowH); }
+
+    ctx.fillStyle = "rgba(102,252,241,0.9)";
+    ctx.font = "bold 14px Rajdhani, Segoe UI, sans-serif";
+    ctx.fillText(d.qty+"x", 24, y+20);
+
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = "600 13px Inter, Segoe UI, sans-serif";
+    ctx.fillText(name, 74, y+20);
+
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.font = "500 10px Inter, Segoe UI, sans-serif";
+    var src = d.sources.join(", ");
+    var sw = ctx.measureText(src).width;
+    ctx.fillText(src, W-24-sw, y+20);
+
+    y += rowH;
+  }
+
+  ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fillRect(24,y+8,W-48,1);
+  ctx.fillStyle = "rgba(255,255,255,0.2)";
+  ctx.font = "600 10px Inter, Segoe UI, sans-serif";
+  ctx.fillText("Generated by ARC Builder — arc-loadout-builder.pages.dev", 24, y+28);
+
+  canvas.toBlob(function(blob){
+    if (!blob) { showToast("Export failed"); return; }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "arc-materials-"+Date.now()+".png";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Image exported!");
+  });
+}
+
+window.openRawMatsModal = openRawMatsModal;
+window.closeRawMatsModal = closeRawMatsModal;
+
+// ------------------------------------------------------------
+if (document.readyState !== "loading") init();
+else window.addEventListener("DOMContentLoaded", init);

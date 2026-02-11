@@ -27,7 +27,6 @@
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
     <link rel="manifest" href="assets/site.webmanifest">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;600&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
@@ -418,11 +417,8 @@
         <button onclick="contextAction('quick')">Send to Quick Use</button>
         <div class="h-px bg-white/10 my-1"></div>
         <button onclick="contextAction('remove')" class="text-red-400 hover:text-red-300">Remove</button>
-        <button id="ctx-attachments" onclick="contextAction('attachments')"
-            style="width:100%; text-align:left; padding:10px 12px; font-size:12px; background:transparent; border:0; color:rgba(255,255,255,.85); cursor:pointer;"
-            onmouseover="this.style.background='rgba(255,255,255,.08)'"
-            onmouseout="this.style.background='transparent'">
-            Attachments…
+        <button id="ctx-attachments" style="display:none;">
+            Edit Attachments
         </button>
     </div>
 
@@ -478,7 +474,6 @@
                 <a href="index.html" class="flex items-center gap-3 cursor-pointer group">
                     <img src="assets/arc_logo.png" alt="ARC Builder"
                         class="h-36 w-auto object-contain drop-shadow-lg"
-                        style="filter: none; mix-blend-mode: normal;"
                         draggable="false"
                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                     <div class="text-2xl font-hud font-bold text-white tracking-widest" style="display:none;">
@@ -532,6 +527,19 @@
                         <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
                     </svg>
                     Discord
+                </button>
+
+                <button onclick="openRawMatsModal()"
+                    class="nav-btn border-[#66FCF1]/20 bg-[#66FCF1]/5 text-[#66FCF1] hover:bg-[#66FCF1]/15">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                        <polyline stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <line stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            x1="12" y1="22.08" x2="12" y2="12"/>
+                    </svg>
+                    Materials
                 </button>
 
                 <button onclick="shareBuild()"

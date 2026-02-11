@@ -18,22 +18,25 @@
     border-radius: 2px;
 }
 
-/* --- 3. The Hologram Image Effect --- */
+/* --- 3. The Hologram Image Effect (scoped) --- */
 img {
-    /* Default State: Blue-tinted, slightly transparent */
-    filter: sepia(100%) hue-rotate(170deg) saturate(200%) opacity(0.8);
-    mix-blend-mode: screen; 
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* On Hover: Restore full color and add the glow */
-.group:hover img {
-    /* We use 'filter' to combine drop-shadow with the removal of other effects */
+/* Only apply hologram to item pool rows */
+#item-pool .item-row img {
+    filter: sepia(100%) hue-rotate(170deg) saturate(200%) opacity(0.8);
+    mix-blend-mode: screen;
+}
+
+#item-pool .item-row:hover img {
     filter: drop-shadow(0 0 8px rgba(102, 252, 241, 0.5)); 
     opacity: 1;
     mix-blend-mode: normal;
     transform: scale(1.1);
 }
+
+
 
 /* --- 4. Scrollbar Styling --- */
 ::-webkit-scrollbar {
@@ -147,7 +150,6 @@ img {
 }
 
 /* Rarity borders (applies to pool rows and slots) */
-/* Rarity borders (applies to pool rows and slots) */
 .rarity-common{
   border-color:rgba(255,255,255,.16) !important;
   box-shadow: 0 0 0 1px rgba(255,255,255,.06);
@@ -174,16 +176,10 @@ img {
   background: linear-gradient(145deg, rgba(255,215,0,0.10), rgba(255,215,0,0.02)) !important;
 }
 
-/* --- Logo Protection --- */
-nav img[alt*="ARC"] {
-    filter: none !important;
-    mix-blend-mode: normal !important;
-    opacity: 1 !important;
-}
+/* --- Logo hover glow --- */
 nav .group:hover img[alt*="ARC"] {
-    filter: drop-shadow(0 0 12px rgba(102, 252, 241, 0.4)) !important;
-    mix-blend-mode: normal !important;
-    transform: none !important;
+    filter: drop-shadow(0 0 12px rgba(102, 252, 241, 0.4));
+    transform: none;
 }
 
 /* --- Logo overflow navbar --- */
@@ -202,4 +198,256 @@ nav img[alt*="ARC"] {
 nav > div {
     padding-top: 8px !important;
     padding-bottom: 8px !important;
+}
+
+/* ===== RAW MATERIALS MODAL ===== */
+.rawmats-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.2);
+  padding: 0 18px;
+}
+.rawmats-tab {
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255,255,255,0.35);
+  cursor: pointer;
+  border: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  background: transparent;
+}
+.rawmats-tab:hover { color: rgba(255,255,255,0.65); }
+.rawmats-tab.active {
+  color: rgba(102,252,241,0.95);
+  border-bottom-color: rgba(102,252,241,0.8);
+}
+
+.rawmats-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  contain: content;
+}
+
+.rawmats-summary { 
+  display: flex; 
+  gap: 12px; 
+  margin-bottom: 16px;
+}
+
+.rawmats-summary-item {
+  flex: 1;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 12px 16px;
+  text-align: center;
+}
+.rawmats-summary-val {
+  display: block; font-size: 24px; font-weight: 900;
+  color: rgba(255,255,255,0.9);
+  font-family: 'Rajdhani', sans-serif;
+}
+.rawmats-summary-label {
+  display: block; font-size: 10px; font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;
+}
+
+.rawmats-section-label {
+  font-size: 10px; font-weight: 900; text-transform: uppercase;
+  letter-spacing: 1px; color: rgba(102,252,241,0.7);
+  margin: 16px 0 8px; padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.rawmats-list { display: flex; flex-direction: column; gap: 4px; }
+
+.rawmats-row {
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 12px;
+  transition: background 0.15s, border-color 0.15s;
+  will-change: auto;
+  contain: layout style;
+}
+.rawmats-row:hover {
+  background: rgba(0,0,0,0.35);
+  border-color: rgba(255,255,255,0.08);
+}
+.rawmats-row.rawmats-complete {
+  opacity: 0.5;
+  background: rgba(102,252,241,0.03);
+  border-color: rgba(102,252,241,0.08);
+}
+.rawmats-row.rawmats-unknown {
+  border-color: rgba(255,180,50,0.1);
+  background: rgba(255,180,50,0.03);
+}
+
+.rawmats-row-main { display: flex; align-items: center; gap: 10px; }
+
+.rawmats-qty {
+  font-size: 14px; font-weight: 900;
+  color: rgba(255,255,255,0.85);
+  font-family: 'Rajdhani', sans-serif;
+  min-width: 42px;
+}
+.rawmats-qty-raw { color: rgba(102,252,241,0.95); }
+
+.rawmats-name {
+  font-size: 13px; font-weight: 700;
+  color: rgba(255,255,255,0.85); flex: 1;
+}
+
+.rawmats-check { color: rgba(102,252,241,0.8); font-weight: 900; font-size: 14px; }
+
+.rawmats-unknown-badge {
+  width: 18px; height: 18px; border-radius: 6px;
+  background: rgba(255,180,50,0.15);
+  border: 1px solid rgba(255,180,50,0.25);
+  color: rgba(255,180,50,0.9);
+  font-size: 10px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.rawmats-row-detail {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-top: 6px; gap: 8px;
+}
+.rawmats-sources {
+  font-size: 10px; color: rgba(255,255,255,0.3);
+  overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; flex: 1;
+}
+
+.rawmats-owned-wrap {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.rawmats-owned-label {
+  font-size: 10px; color: rgba(255,255,255,0.35); font-weight: 700;
+}
+.rawmats-owned-input {
+  width: 50px; padding: 3px 6px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.3); color: rgba(255,255,255,0.85);
+  font-size: 12px; font-weight: 700; text-align: center; outline: none;
+}
+.rawmats-owned-input:focus { border-color: rgba(102,252,241,0.3); }
+.rawmats-still-need {
+  font-size: 10px; color: rgba(255,100,100,0.8); font-weight: 700;
+}
+
+.rawmats-raw-badge {
+  font-size: 8px; font-weight: 900; padding: 2px 6px;
+  border-radius: 4px; background: rgba(102,252,241,0.1);
+  color: rgba(102,252,241,0.7);
+  border: 1px solid rgba(102,252,241,0.15);
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+
+/* Crafting tree */
+.rawmats-tree { display: flex; flex-direction: column; gap: 8px; }
+.rawmats-tree-item {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 14px; padding: 12px 14px;
+}
+.rawmats-tree-header { display: flex; align-items: center; gap: 8px; }
+.rawmats-tree-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.rawmats-tree-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  opacity: 0.9;
+}
+.rawmats-tree-icon-fallback {
+  color: rgba(255,255,255,0.25);
+  font-size: 14px;
+  font-weight: 900;
+}
+.rawmats-tree-name {
+  font-size: 14px; font-weight: 800; color: rgba(255,255,255,0.9);
+}
+.rawmats-tree-parent {
+  font-size: 10px; color: rgba(255,255,255,0.3); margin-left: auto;
+}
+.rawmats-tree-recipe { margin-top: 8px; padding-left: 8px; }
+.rawmats-tree-ing {
+  display: flex; align-items: center; gap: 6px; padding: 4px 0;
+}
+.rawmats-tree-line {
+  color: rgba(255,255,255,0.15); font-family: monospace; font-size: 14px;
+}
+.rawmats-tree-ing-qty {
+  font-size: 12px; font-weight: 800;
+  color: rgba(255,255,255,0.6); min-width: 32px;
+}
+.rawmats-tree-ing-name {
+  font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 600;
+}
+.rawmats-tree-ing.rawmats-tree-raw .rawmats-tree-ing-qty {
+  color: rgba(102,252,241,0.8);
+}
+.rawmats-tree-ing.rawmats-tree-raw .rawmats-tree-ing-name {
+  color: rgba(102,252,241,0.7);
+}
+.rawmats-tree-no-recipe {
+  font-size: 11px; color: rgba(255,255,255,0.25);
+  font-style: italic; margin-top: 6px; padding-left: 28px;
+}
+
+.rawmats-toggle {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 700;
+}
+.rawmats-footer { justify-content: flex-start !important; }
+
+/* --- Image resets: never hologram these --- */
+.arc-tt-card img,
+.arc-modal-card img,
+#rawmats-modal img,
+.rawmats-tree-img,
+.arc-att-icon img,
+.arc-modal-icon-wrap img,
+.preview-item img,
+.detail-icon img,
+.augment-icon-wrap img,
+#slot-shield img,
+[id^="slot-equip-"] img,
+#backpack-grid img,
+#quick-grid img,
+#safe-grid img,
+#augmented-grid img {
+    filter: none;
+    mix-blend-mode: normal;
+    opacity: 1;
+}
+
+/* Slot items get subtle hover glow only */
+#backpack-grid .group:hover img,
+#quick-grid .group:hover img,
+#safe-grid .group:hover img,
+#augmented-grid .group:hover img,
+[id^="slot-equip-"] .group:hover img {
+    filter: drop-shadow(0 0 6px rgba(102, 252, 241, 0.4));
+    transform: scale(1.05);
 }
